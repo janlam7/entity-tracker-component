@@ -9,70 +9,75 @@ namespace Hostnet\Component\EntityTracker\Listener;
 use Doctrine\ORM\Event\LifecycleEventArgs;
 use Doctrine\ORM\Event\PreFlushEventArgs;
 use Doctrine\ORM\Proxy\Proxy;
+use Doctrine\Persistence\ObjectManager;
+use Hostnet\Component\EntityTracker\Attributes\Tracked;
 use Hostnet\Component\EntityTracker\Event\EntityChangedEvent;
 use Hostnet\Component\EntityTracker\Events;
-use Hostnet\Component\EntityTracker\Provider\EntityAnnotationMetadataProvider;
+use Hostnet\Component\EntityTracker\Provider\EntityMetadataProvider;
 use Hostnet\Component\EntityTracker\Provider\EntityMutationMetadataProvider;
+use Psr\Cache\CacheItemInterface;
+use Psr\Cache\CacheItemPoolInterface;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
+use Symfony\Component\Cache\Adapter\ArrayAdapter;
 
 /**
- * Listener for entities that use the Tracked Annotation.
+ * Listener for entities that use the Tracked Annotation or attribute.
  *
  * This listener will fire an "Events::ENTITY_CHANGED" event
  * per entity that is changed.
  */
 class EntityChangedListener
 {
-    /**
-     * @var EntityAnnotationMetadataProvider
-     */
-    private $meta_annotation_provider;
-
-    /**
-     * @var EntityMutationMetadataProvider
-     */
-    private $meta_mutation_provider;
-
-    /**
-     * @var string[]
-     */
-    private $annotations = [];
-
-    /**
-     * @var LoggerInterface
-     */
-    private $logger;
-
-    /**
-     * @param EntityAnnotationMetadataProvider $meta_annotation_provider
-     * @param EntityMutationMetadataProvider $meta_mutation_provider
-     * @param LoggerInterface $logger
-     */
     public function __construct(
-        EntityAnnotationMetadataProvider $meta_annotation_provider,
-        EntityMutationMetadataProvider $meta_mutation_provider,
-        LoggerInterface $logger = null
+        private EntityMetadataProvider $meta_annotation_provider,
+        private EntityMutationMetadataProvider $meta_mutation_provider,
+        private ?LoggerInterface $logger = null,
+        private CacheItemPoolInterface $is_tracked_cache = new ArrayAdapter()
     ) {
-        $this->meta_annotation_provider = $meta_annotation_provider;
-        $this->meta_mutation_provider   = $meta_mutation_provider;
-        $this->logger                   = $logger ? : new NullLogger();
+        $this->logger = $logger ? : new NullLogger();
+    }
+
+    private function isTracked(ObjectManager $em, mixed $entity): bool
+    {
+        $cache_key   = base64_encode('TRACKED-' . get_class($entity));
+        $cached_item = $this->is_tracked_cache->getItem($cache_key);
+
+        if ($cached_item->isHit()) {
+            return $cached_item->get();
+        }
+
+        if (null !== $this->meta_annotation_provider->getAttributeFromEntity(Tracked::class, $em, $entity)) {
+            return $this->save($cached_item, true);
+        }
+
+        if ($this->meta_annotation_provider->isTracked($em, $entity)) {
+            return $this->save($cached_item, true);
+        }
+
+        return $this->save($cached_item, false);
+    }
+
+    private function save(CacheItemInterface $item, bool $value): bool
+    {
+        $item->set($value);
+        $this->is_tracked_cache->save($item);
+
+        return $value;
     }
 
     /**
      * Pre Flush event callback
      *
      * Checks if the entity contains an @Tracked (or derived)
-     * annotation. If so, it will attempt to calculate changes
+     * annotation or attribute. If so, it will attempt to calculate changes
      * made and dispatch 'Events::ENTITY_CHANGED' with the current
      * and original entity states. Note that the original entity
      * is not managed.
-     *
-     * @param PreFlushEventArgs $event
      */
-    public function preFlush(PreFlushEventArgs $event)
+    public function preFlush(PreFlushEventArgs $event): void
     {
-        $em      = $event->getEntityManager();
+        $em      = $event->getObjectManager();
         $changes = $this->meta_mutation_provider->getFullChangeSet($em);
 
         foreach ($changes as $updates) {
@@ -80,7 +85,8 @@ class EntityChangedListener
                 continue;
             }
 
-            if (false === $this->meta_annotation_provider->isTracked($em, current($updates))) {
+            $entity = current($updates);
+            if (!$this->isTracked($em, $entity)) {
                 continue;
             }
 
@@ -111,18 +117,9 @@ class EntityChangedListener
     }
 
     /**
-     * Pre Persist event callback
-     *
-     * Checks if the entity contains an @Tracked (or derived)
-     * annotation. If so, it will dispatch 'Events::ENTITY_CHANGED'
-     * with the new entity states.
-     *
-     * @deprecated Will be removed. Here so the bundle does not break.
-     *
-     * @param LifecycleEventArgs $event
+     * @deprecated Will be removed when removing doctrine/annotations, will break entity-tracker-bundle otherwise.
      */
-    public function prePersist(LifecycleEventArgs $event)
+    public function prePersist(LifecycleEventArgs $event): void
     {
-        // do nothing, will be removed later on.
     }
 }
