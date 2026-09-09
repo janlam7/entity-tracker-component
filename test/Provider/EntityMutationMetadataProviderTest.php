@@ -6,7 +6,6 @@ declare(strict_types=1);
 
 namespace Hostnet\Component\EntityTracker\Provider;
 
-use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
@@ -47,7 +46,7 @@ class EntityMutationMetadataProviderTest extends TestCase
         $this->connection = new MysqlPersistentConnection();
         $params           = $this->connection->getConnectionParams();
 
-        $config   = Setup::createAnnotationMetadataConfiguration([__DIR__ . '/Entity'], true, null, null, false);
+        $config   = Setup::createAttributeMetadataConfiguration([__DIR__ . '/Entity'], true);
         $this->em = EntityManager::create($params, $config);
 
         // create tables in the database
@@ -55,7 +54,7 @@ class EntityMutationMetadataProviderTest extends TestCase
         $schema_tool = new SchemaTool($this->em);
         $schema_tool->createSchema($metadata);
 
-        $this->provider = new EntityMutationMetadataProvider(new AnnotationReader());
+        $this->provider = new EntityMutationMetadataProvider();
     }
 
     public function testChanges(): void

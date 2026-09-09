@@ -6,7 +6,6 @@ declare(strict_types=1);
 
 namespace Hostnet\Component\EntityTracker\Provider;
 
-use Doctrine\Common\Annotations\Reader;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Mapping\ClassMetadata;
@@ -14,21 +13,11 @@ use Doctrine\ORM\Mapping\ClassMetadataInfo;
 use Doctrine\ORM\PersistentCollection;
 use Doctrine\ORM\UnitOfWork;
 use Psr\Log\LoggerInterface;
-use Psr\Log\NullLogger;
 
 class EntityMutationMetadataProvider
 {
-    /**
-     * @var LoggerInterface
-     */
-    private $logger;
-
-    /**
-     * @param LoggerInterface $logger
-     */
-    public function __construct(Reader $unused, LoggerInterface $logger = null)
+    public function __construct(private ?LoggerInterface $logger = null)
     {
-        $this->logger = $logger ?: new NullLogger();
     }
 
     /**
@@ -152,7 +141,7 @@ class EntityMutationMetadataProvider
                 }
             );
             if (!empty($diff)) {
-                $this->logger->info(
+                $this->logger?->info(
                     'Association Change detected on owning ONE side',
                     [
                         'left'  => $left_values,

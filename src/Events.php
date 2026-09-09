@@ -16,7 +16,7 @@ final class Events
     //@codingStandardsIgnoreEnd
 
     /**
-     * Thrown when @Tracked (or derived) annotations are found on the entity
+     * Thrown when the Tracked attribute (or a derived attribute) is found on the entity
      *
      * @var string
      */

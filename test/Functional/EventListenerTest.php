@@ -6,7 +6,6 @@ declare(strict_types=1);
 
 namespace Hostnet\Component\EntityTracker\Functional;
 
-use Doctrine\Common\Annotations\AnnotationReader;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityManagerInterface;
@@ -49,7 +48,7 @@ class EventListenerTest extends TestCase
         $this->connection = new MysqlPersistentConnection();
         $params           = $this->connection->getConnectionParams();
 
-        $config   = Setup::createAnnotationMetadataConfiguration([__DIR__ . '/Entity'], true, null, null, false);
+        $config   = Setup::createAttributeMetadataConfiguration([__DIR__ . '/Entity'], true);
         $this->em = EntityManager::create($params, $config);
 
         $event_manager = $this->em->getEventManager();
@@ -59,21 +58,17 @@ class EventListenerTest extends TestCase
         $schema_tool = new SchemaTool($this->em);
         $schema_tool->createSchema($metadata);
 
-        // default doctrine annotation reader
-        $annotation_reader = new AnnotationReader();
-
         // setup required providers
-        $mutation_metadata_provider   = new EntityMutationMetadataProvider($annotation_reader);
-        $annotation_metadata_provider = new EntityMetadataProvider($annotation_reader);
+        $mutation_metadata_provider = new EntityMutationMetadataProvider();
+        $meta_provider              = new EntityMetadataProvider();
 
-        // pre flush event listener that uses the @Tracked annotation
+        // pre flush event listener that uses the Tracked attribute
         $entity_changed_listener = new EntityChangedListener(
-            $annotation_metadata_provider,
+            $meta_provider,
             $mutation_metadata_provider
         );
 
         $event_manager->addEventListener('preFlush', $entity_changed_listener);
-        $event_manager->addEventListener('prePersist', $entity_changed_listener);
         $event_manager->addEventListener('entityChanged', $this);
 
         $this->events = [];
