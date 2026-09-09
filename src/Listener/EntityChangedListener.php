@@ -37,7 +37,7 @@ class EntityChangedListener
         $this->logger = $logger ? : new NullLogger();
     }
 
-    private function isTracked(ObjectManager $em, mixed $entity): bool
+    private function isTracked(ObjectManager $em, object $entity): bool
     {
         $cache_key   = base64_encode('TRACKED-' . get_class($entity));
         $cached_item = $this->is_tracked_cache->getItem($cache_key);

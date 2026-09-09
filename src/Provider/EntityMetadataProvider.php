@@ -12,8 +12,14 @@ use Hostnet\Component\EntityTracker\Attributes\Tracked;
 
 class EntityMetadataProvider
 {
-    public function getAttributeFromEntity(string $attribute_class, EntityManagerInterface $em, mixed $entity): ?Tracked
-    {
+    /**
+     * @param class-string<Tracked> $attribute_class
+     */
+    public function getAttributeFromEntity(
+        string $attribute_class,
+        EntityManagerInterface $em,
+        object $entity
+    ): ?Tracked {
         $class = get_class($entity);
         if ($entity instanceof Proxy) {
             $class = $em->getClassMetadata($class)->getName();
