@@ -7,8 +7,8 @@ declare(strict_types=1);
 namespace Hostnet\Component\EntityTracker\Listener;
 
 use Doctrine\ORM\Event\PreFlushEventArgs;
-use Doctrine\ORM\Proxy\Proxy;
 use Doctrine\Persistence\ObjectManager;
+use Doctrine\Persistence\Proxy;
 use Hostnet\Component\EntityTracker\Attributes\Tracked;
 use Hostnet\Component\EntityTracker\Event\EntityChangedEvent;
 use Hostnet\Component\EntityTracker\Events;

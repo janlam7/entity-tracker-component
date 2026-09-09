@@ -7,10 +7,11 @@ declare(strict_types=1);
 namespace Hostnet\Component\EntityTracker\Functional;
 
 use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\DBAL\DriverManager;
 use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\ORMSetup;
 use Doctrine\ORM\Tools\SchemaTool;
-use Doctrine\ORM\Tools\Setup;
 use Doctrine\ORM\UnitOfWork;
 use Hostnet\Component\DatabaseTest\MysqlPersistentConnection;
 use Hostnet\Component\EntityTracker\Event\EntityChangedEvent;
@@ -48,8 +49,9 @@ class EventListenerTest extends TestCase
         $this->connection = new MysqlPersistentConnection();
         $params           = $this->connection->getConnectionParams();
 
-        $config   = Setup::createAttributeMetadataConfiguration([__DIR__ . '/Entity'], true);
-        $this->em = EntityManager::create($params, $config);
+        $config     = ORMSetup::createAttributeMetadataConfiguration([__DIR__ . '/Entity'], true);
+        $connection = DriverManager::getConnection($params, $config);
+        $this->em   = new EntityManager($connection, $config);
 
         $event_manager = $this->em->getEventManager();
 
